@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes"> <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>快递管家 v44.0</title>
+    <style>
+        :root { --bg:#f4f6f9; --primary:#2c3e50; --accent:#007aff; --danger:#ff3b30; --success:#34c759; --text-main:#333; --text-sub:#999; --radius:12px; }
+        body { font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif; background-color:var(--bg); margin:0; padding:0; -webkit-tap-highlight-color:transparent; user-select:none; color:var(--text-main); overscroll-behavior-y:none; }
+        
+        /* 顶部导航 */
+        .nav-bar { position:fixed; top:0; left:0; width:100%; height:44px; background:rgba(255,255,255,0.96); backdrop-filter:blur(10px); z-index:100; border-bottom:1px solid rgba(0,0,0,0.05); display:flex; align-items:center; justify-content:space-between; padding:0 16px; box-sizing:border-box; }
+        .nav-left { flex:1; font-family:monospace; font-size:12px; color:var(--text-sub); }
+        .nav-center { flex:2; text-align:center; font-weight:700; font-size:15px; color:#000; letter-spacing:1px; }
+        .nav-right { flex:1; text-align:right; font-size:13px; color:var(--accent); font-weight:600; cursor:pointer; }
+
+        .search-wrap { position:fixed; top:44px; left:0; width:100%; background:#fff; z-index:99; padding:8px 12px; box-sizing:border-box; box-shadow:0 2px 8px rgba(0,0,0,0.05); transform:translateY(-100%); transition:transform 0.2s ease; }
+        .search-wrap.show { transform:translateY(0); }
+        .s-input { width:100%; height:32px; background:#f0f2f5; border:none; border-radius:6px; padding:0 12px; font-size:13px; outline:none; }
+        mark { background-color:#fff3cd; color:#d63384; padding:0 2px; border-radius:2px; font-weight:bold; }
+
+        .container { padding:54px 12px 100px; overflow-x:hidden; }
+
+        /* 输入区 */
+        .input-box { background:#fff; border-radius:var(--radius); padding:15px; box-shadow:0 1px 3px rgba(0,0,0,0.05); margin-bottom:20px; }
+        .tools { display:flex; gap:10px; margin-bottom:12px; }
+        .btn-t { flex:1; height:34px; border:1px solid #e1e4e8; border-radius:6px; background:#fff; font-size:12px; font-weight:600; color:#555; display:flex; align-items:center; justify-content:center; }
+        .btn-t:active { background:#f5f5f7; }
+        .btn-smart { color:var(--accent); border-color:rgba(0,122,255,0.3); background:#f0f8ff; }
+        .form-g { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+        .sp-2 { grid-column:span 2; }
+        input, select { width:100%; height:38px; border:1px solid #e5e5ea; border-radius:6px; background:#fdfdfd; padding:0 10px; font-size:13px; box-sizing:border-box; outline:none; -webkit-appearance:none; transition:border 0.2s; }
+        input:focus { border-color:var(--accent); background:#fff; }
+        input::placeholder { color:#ccc; font-size:12px; }
+        .req-border { border-left:3px solid var(--danger); }
+        #addBtn { width:100%; height:40px; margin-top:12px; background:var(--primary); color:white; border:none; border-radius:6px; font-size:14px; font-weight:700; letter-spacing:1px; }
+        #addBtn:active { opacity:0.9; }
+
+        /* 列表 */
+        .head-bar { display:flex; justify-content:space-between; align-items:center; padding:4px; margin-bottom:6px; font-size:11px; font-weight:700; color:#999; text-transform:uppercase; letter-spacing:0.5px; }
+        .badge { background:#e5e5ea; padding:2px 6px; border-radius:4px; font-size:10px; color:#666; }
+        
+        .p-card { background:#fff; border-radius:8px; padding:14px; margin-bottom:10px; position:relative; box-shadow:0 2px 6px rgba(0,0,0,0.04); border:1px solid #f0f0f0; }
+        .p-card.arrived { border-left:4px solid var(--success); }
+        .p-card.transit { border-left:4px solid #ff9f0a; }
+        .p-del-txt { position:absolute; top:12px; right:12px; font-size:11px; color:#ccc; cursor:pointer; border:1px solid #eee; padding:2px 8px; border-radius:4px; }
+        .p-main { font-size:15px; font-weight:700; color:#000; margin-bottom:6px; padding-right:40px; }
+        .p-sub { font-size:12px; color:#666; display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+        .tag { padding:1px 5px; border-radius:3px; font-size:10px; font-weight:500; border:1px solid transparent; }
+        .t-code { background:#fff8e1; color:#f57c00; border-color:#ffe0b2; }
+        .t-track { background:#e3f2fd; color:#1976d2; border-color:#bbdefb; cursor:pointer; }
+        .t-note { background:#f5f5f5; color:#666; }
+        .p-foot { display:flex; gap:10px; margin-top:12px; padding-top:10px; border-top:1px dashed #f5f5f7; }
+        .btn-act { flex:1; height:30px; border-radius:4px; border:none; font-size:12px; font-weight:600; cursor:pointer; }
+        .b-tog { background:#fff; border:1px solid #e1e4e8; color:#333; }
+        .b-ok { background:var(--success); color:white; }
+        .b-dis { background:#f5f5f7; color:#ccc; pointer-events:none; }
+
+        .s-card { background:#f8f9fa; border-radius:8px; padding:12px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; }
+        .s-info { flex:1; }
+        .s-title { font-size:14px; font-weight:600; color:#555; }
+        .s-meta { font-size:11px; color:#999; margin-top:4px; }
+        .s-ops { display:flex; gap:8px; }
+        .btn-s { padding:3px 8px; border-radius:4px; font-size:11px; font-weight:500; cursor:pointer; background:#fff; border:1px solid #ddd; }
+        .btn-rev { color:var(--accent); } .btn-del { color:var(--danger); }
+
+        .date-head { font-size:11px; color:#999; font-weight:700; margin:15px 0 6px 4px; display:flex; align-items:center; gap:4px; cursor:pointer; }
+        .date-head::before { content:'▼'; font-size:8px; opacity:0.5; } .date-head.closed::before { content:'▶'; }
+        .group-box.hidden { display:none; }
+        .trash-list { margin-top:10px; background:#fff; border-radius:8px; padding:10px; }
+        .trash-row { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px dashed #eee; font-size:11px; color:#aaa; }
+        .trash-row:last-child { border:none; }
+        .hidden { display:none; }
+
+        .modal { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); z-index:200; display:none; justify-content:center; align-items:center; }
+        .modal.show { display:flex; }
+        .m-box { background:#fff; width:85%; border-radius:12px; padding:15px; box-shadow:0 10px 40px rgba(0,0,0,0.15); }
+        .m-ta { width:100%; height:90px; border:1px solid #eee; border-radius:6px; padding:10px; margin:15px 0; outline:none; font-size:13px; box-sizing:border-box; resize:none; background:#fafafa; }
+        .app-grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; }
+        .app-btn { background:#f2f2f7; padding:8px 0; border-radius:6px; text-align:center; font-size:11px; font-weight:600; cursor:pointer; }
+    </style>
+</head>
+<body>
+
+<div class="nav-bar">
+    <div class="nav-left" id="sysTime">12:00</div>
+    <div class="nav-center">快递管家</div>
+    <div class="nav-right" onclick="toggleSearch()">搜索</div>
+</div>
+
+<div class="search-wrap" id="searchWrap">
+    <input class="s-input" id="sInput" placeholder="输入名称、单号、日期..." oninput="render()">
+</div>
+
+<div class="container">
+    <div class="input-box">
+        <div class="tools">
+            <button class="btn-t" onclick="jumpAlbum()">打开相册</button>
+            <button class="btn-t btn-smart" onclick="openSmart()">智能识别文本</button>
+        </div>
+        <input type="file" id="dummyFile" style="display:none">
+        <div class="form-g">
+            <select id="carrier" class="req-border"><option value="">快递公司(必)</option><option>京东</option><option>顺丰</option><option>中通</option><option>圆通</option><option>申通</option><option>韵达</option><option>极兔</option><option>邮政</option><option>菜鸟</option><option>丹鸟</option><option>德邦</option><option>其他</option></select>
+            <select id="source" class="req-border"><option value="">来源平台(必)</option><option>抖音</option><option>淘宝</option><option>京东</option><option>拼多多</option><option>小红书</option><option>闲鱼</option><option>微信</option><option>其他</option></select>
+            <input id="pkgCode" placeholder="取件码 (选填)">
+            <input id="pkgTrack" placeholder="运单号 (选填)">
+            <input id="pkgName" class="sp-2" placeholder="物品名称 (选填)">
+            <input id="pkgNote" class="sp-2" placeholder="备注 (选填)">
+        </div>
+        <button id="addBtn" onclick="addPkg()">确认入库</button>
+    </div>
+
+    <div class="head-bar"><span>待签收</span><span class="badge" id="c1">0</span></div>
+    <div id="listPending"></div>
+
+    <div class="head-bar" style="margin-top:25px"><span>签收记录</span><span class="badge" id="c2">0</span></div>
+    <div id="listSigned"></div>
+
+    <div style="text-align:center;margin-top:30px;font-size:11px;color:#999;cursor:pointer" onclick="toggleID('trashZone')">查看回收站 (保留10条) ▼</div>
+    <div id="trashZone" class="hidden trash-list">
+        <div style="text-align:center;color:#ff3b30;font-size:11px;font-weight:bold;margin-bottom:8px;cursor:pointer" onclick="emptyTrash()">[清空]</div>
+        <div id="listTrash"></div>
+    </div>
+</div>
+
+<div class="modal" id="smartModal">
+    <div class="m-box">
+        <div style="text-align:center;font-weight:700;font-size:14px">粘贴识别</div>
+        <textarea id="smartText" class="m-ta" placeholder="支持语音输入、短信粘贴..."></textarea>
+        <div style="display:flex;gap:10px">
+            <button onclick="closeModal()" style="flex:1;height:34px;border:none;background:#f2f2f7;border-radius:6px;font-size:13px">取消</button>
+            <button onclick="doSmart()" style="flex:1;height:34px;border:none;background:var(--accent);color:white;border-radius:6px;font-size:13px">填充</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="jumpModal" onclick="this.classList.remove('show')">
+    <div class="m-box" onclick="event.stopPropagation()">
+        <div style="text-align:center;font-weight:700;margin-bottom:10px;font-size:14px">单号已复制</div>
+        <div class="app-grid">
+            <div class="app-btn" onclick="go('cainiao')">菜鸟</div><div class="app-btn" onclick="go('taobao')">淘宝</div><div class="app-btn" onclick="go('douyin')">抖音</div>
+            <div class="app-btn" onclick="go('xhs')">小红书</div><div class="app-btn" onclick="go('wx')">微信</div><div class="app-btn" onclick="go('web')">浏览器</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const KEY = 'kuaidi_v44_siri';
+    let list = []; let curTrack = "";
+
+    // 1. URL 唤醒逻辑 (Siri入口)
+    window.onload = function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const siriText = urlParams.get('q') || urlParams.get('text'); // 获取 ?q=... 或 ?text=...
+        if (siriText) {
+            document.getElementById('smartText').value = decodeURIComponent(siriText);
+            // 自动触发识别
+            doSmart(true); // 传入 true 表示是 Siri 触发的
+        }
+    };
+
+    setInterval(()=>{const d=new Date();document.getElementById('sysTime').innerText=`${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`}, 1000);
+    try { const s=localStorage.getItem(KEY)||localStorage.getItem('kuaidi_v43_nlp'); if(s) list=JSON.parse(s); } catch(e){ list=[]; }
+    function save() { localStorage.setItem(KEY, JSON.stringify(list)); render(); }
+
+    function hl(str, k) { if(!str)return''; if(!k)return str; return str.replace(new RegExp(`(${k})`,'gi'), '<mark>$1</mark>'); }
+    function ft(ts) { if(!ts)return''; const d=new Date(ts); const p=n=>n.toString().padStart(2,'0'); return `${d.getFullYear()}/${p(d.getMonth()+1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`; }
+    function gk(ts) { const d=new Date(ts); return `${d.getMonth()+1}月${d.getDate()}日`; }
+
+    function render() {
+        const kw = document.getElementById('sInput').value.toLowerCase().trim();
+        const pL=document.getElementById('listPending'), sL=document.getElementById('listSigned'), tL=document.getElementById('listTrash');
+        pL.innerHTML=''; sL.innerHTML=''; tL.innerHTML='';
+        let c1=0, c2=0, c3=0;
+
+        let pendingItems = list.filter(i=>i.st==='p' && (i.n+i.c+i.code+ft(i.t1)).toLowerCase().includes(kw));
+        pendingItems.sort((a,b) => { if(a.sub==='arr'&&b.sub!=='arr')return-1; if(a.sub!=='arr'&&b.sub==='arr')return 1; return b.t1-a.t1; });
+        c1=pendingItems.length;
+        pendingItems.forEach(i=>{
+            const arr = i.sub==='arr';
+            const tags = []; if(i.code) tags.push(`<span class="tag t-code">${hl(i.code, kw)}</span>`); if(i.track) tags.push(`<span class="tag t-track" onclick="showJump('${i.track}')">单号</span>`); if(i.note) tags.push(`<span class="tag t-note">${hl(i.note, kw)}</span>`);
+            const div = document.createElement('div'); div.className = arr ? 'p-card arrived' : 'p-card transit';
+            div.innerHTML = `
+                <div class="p-del-txt" onclick="toTrash('${i.id}')">删除</div>
+                <div class="p-main">${hl(i.n||'未知物品', kw)}</div>
+                <div class="p-sub"><span>${hl(i.c, kw)}·${hl(i.s, kw)}</span> ${tags.join('')}</div>
+                <div class="p-sub" style="margin-top:4px;color:#ccc;font-size:10px">${arr?'到站':'入库'}: ${hl(ft(arr?i.t_arr:i.t1), kw)}</div>
+                <div class="p-foot"><button class="btn-act b-tog" onclick="tog('${i.id}')">${arr?'撤回状态':'确认到站'}</button><button class="btn-act ${arr?'b-ok':'b-dis'}" onclick="sign('${i.id}')">签收</button></div>`;
+            pL.appendChild(div);
+        });
+
+        const sItems = list.filter(i=>i.st==='s' && (i.n+i.c+i.code+ft(i.t2)).toLowerCase().includes(kw)).sort((a,b)=>b.t2-a.t2);
+        c2=sItems.length; if(c2>0) {
+            const groups={}; const keys=[]; sItems.forEach(i=>{ const k=gk(i.t2); if(!groups[k]){groups[k]=[]; keys.push(k);} groups[k].push(i); });
+            keys.forEach(k => {
+                const box = document.createElement('div'); box.className = 'group-box';
+                sL.innerHTML += `<div class="date-head" onclick="this.nextElementSibling.classList.toggle('hidden');this.classList.toggle('closed')">${k} (${groups[k].length})</div>`;
+                groups[k].forEach(i => {
+                    const cStr = i.code ? ` <span class="tag t-code">${hl(i.code,kw)}</span>` : '';
+                    box.innerHTML += `<div class="s-card"><div class="s-info"><div class="s-title">${hl(i.n||'未知', kw)}</div><div class="s-meta">${hl(i.c, kw)} ${cStr} <span style="margin-left:5px">${hl(ft(i.t2), kw)}</span></div></div><div class="s-ops"><button class="btn-s btn-rev" onclick="revert('${i.id}')">撤回</button><button class="btn-s btn-del" onclick="toTrash('${i.id}')">删除</button></div></div>`;
+                });
+                sL.appendChild(box);
+            });
+        }
+
+        const tItems = list.filter(i=>i.st==='d').sort((a,b)=>b.t1-a.t1); c3=tItems.length;
+        tItems.slice(0, 10).forEach(i=>{ tL.innerHTML += `<div class="trash-row"><span>${i.n||i.c}</span><span style="color:#007aff;cursor:pointer" onclick="restore('${i.id}')">恢复</span></div>`; });
+        document.getElementById('c1').innerText=c1; document.getElementById('c2').innerText=c2; document.getElementById('c3').innerText=c3;
+    }
+
+    function addPkg(){
+        const c=document.getElementById('carrier').value; const s=document.getElementById('source').value;
+        if(!c || !s){ alert('快递和来源必填'); return; }
+        list.push({id:Date.now()+'', c:c, s:s, code:v('pkgCode'), n:v('pkgName'), track:v('pkgTrack'), note:v('pkgNote'), st:'p', sub:'tr', t1:Date.now()});
+        save();
+        ['pkgName','pkgCode','pkgTrack','pkgNote'].forEach(id=>document.getElementById(id).value='');
+        document.getElementById('carrier').selectedIndex=0; document.getElementById('source').selectedIndex=0;
+    }
+    function v(id){return document.getElementById(id).value.trim();}
+    function tog(id){let i=list.find(x=>x.id===id); if(i){i.sub=i.sub==='tr'?'arr':'tr'; if(i.sub==='arr') i.t_arr=Date.now(); save();}}
+    function sign(id){let i=list.find(x=>x.id===id); if(i&&i.sub==='arr'){i.st='s'; i.t2=Date.now(); save();}}
+    function revert(id){let i=list.find(x=>x.id===id); if(i){i.st='p'; i.sub='arr'; save();}}
+    function restore(id){let i=list.find(x=>x.id===id); if(i){i.st='p'; save();}}
+    function toTrash(id){ let i=list.find(x=>x.id===id); if(i){ i.st='d'; let trash=list.filter(x=>x.st==='d').sort((a,b)=>b.t1-a.t1); if(trash.length>10){ let ks=trash.slice(0,10).map(x=>x.id); list=list.filter(x=>x.st!=='d'||ks.includes(x.id)); } save(); } }
+    function emptyTrash(){if(confirm('清空?')){list=list.filter(x=>x.st!=='d'); save();}}
+    function jumpAlbum() { const u = navigator.userAgent; if (u.match(/iPhone|iPad/i)) window.location.href = "photos-redirect://"; else document.getElementById('dummyFile').click(); }
+    function openSmart() { document.getElementById('smartModal').classList.add('show'); document.getElementById('smartText').focus(); }
+    function closeModal() { document.getElementById('smartModal').classList.remove('show'); document.getElementById('jumpModal').classList.remove('show'); }
+    function toggleSearch(){ document.getElementById('searchWrap').classList.toggle('show'); document.getElementById('sInput').focus(); }
+    function toggleID(id){ document.getElementById(id).classList.toggle('hidden'); }
+
+    function doSmart(isSiri = false){
+        let t = document.getElementById('smartText').value; if(!t) return;
+        t=t.replace(/\s+/g,' ').replace(/[\(\)（）]/g,' ');
+        let sent_src = t.match(/(?:我在|在|从)\s*([^买下单]+)/);
+        let sent_item = t.match(/买了\s*([^，,。发]+)/);
+        let sent_carrier = t.match(/发的\s*([^快递]+)\s*快递/);
+        let sent_code = t.match(/取件码是\s*[:：]?\s*([A-Za-z0-9-]+)/);
+        if(sent_src) document.getElementById('source').value = sent_src[1];
+        else { const srcs=['抖音','淘宝','京东','拼多多','小红书','咸鱼','微信','唯品会']; for(let s of srcs) if(t.toUpperCase().includes(s)) document.getElementById('source').value=s; }
+        if(sent_carrier) document.getElementById('carrier').value = sent_carrier[1];
+        else { const map={'京东':'京东','顺丰':'顺丰','中通':'中通','圆通':'圆通','申通':'申通','韵达':'韵达','极兔':'极兔','邮政':'邮政','菜鸟':'菜鸟','丹鸟':'丹鸟','德邦':'德邦'}; for(let k in map) if(t.includes(k)) document.getElementById('carrier').value=map[k]; }
+        if(sent_code) document.getElementById('pkgCode').value = sent_code[1];
+        else { let cm=t.match(/([A-Za-z0-9]+-[0-9]+(-[0-9]+)?)/); if(!cm)cm=t.match(/(?:取件码|码)\s*[:：]?\s*([A-Za-z0-9]{3,8})/); if(cm)document.getElementById('pkgCode').value=cm[1]||cm[0]; }
+        if(sent_item) document.getElementById('pkgName').value = sent_item[1];
+        else { let nm=""; const bads=['菜鸟','驿站','快递','取件','通知','派送']; let bm; const br=/【([^】]+)】/g; while((bm=br.exec(t))!==null){let w=bm[1],isBad=false;for(let b of bads)if(w.includes(b))isBad=true;if(!isBad){nm=w;break;}} if(!nm){let m=t.match(/(?:购买|商品|包含|内有|物品|内容)[:：]?\s*([^，,。.\s]+)/); if(m)nm=m[1];} if(nm)document.getElementById('pkgName').value=nm.substr(0,15); }
+        let tr=t.match(/(SF[0-9A-Za-z]+|JD[0-9A-Za-z]+|\d{12,})/); if(tr&&!/^1\d{10}$/.test(tr[0]))document.getElementById('pkgTrack').value=tr[0];
+        
+        closeModal(); document.getElementById('smartText').value='';
+        
+        // 如果是 Siri 触发的，且识别到了必填项，自动入库
+        if (isSiri) {
+            const c=document.getElementById('carrier').value; const s=document.getElementById('source').value;
+            if(c && s) {
+                addPkg(); // 自动入库
+                alert("已通过 Siri 自动识别并入库！");
+            } else {
+                alert("Siri 识别信息不全，请手动补充必填项。");
+            }
+        }
+    }
+
+    function showJump(t){ curTrack=t; const i=document.createElement('input');i.value=t;document.body.appendChild(i);i.select();document.execCommand('copy');document.body.removeChild(i); document.getElementById('jumpModal').classList.add('show'); }
+    function go(a){ let u=""; if(a==='cainiao')u="cainiao://";else if(a==='taobao')u="taobao://";else if(a==='douyin')u="snssdk1128://";else if(a==='xhs')u="xhsdiscover://";else if(a==='wx')u="weixin://";else u="https://m.baidu.com/s?word="+curTrack; window.location.href=u; closeModal(); }
+
+    render();
+</script>
+</body>
+</html>
