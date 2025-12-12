@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>快递管家 v50.0</title>
+    <style>
+        :root {
+            --bg: #f4f5f7;
+            --card: #ffffff;
+            --primary: #2c3e50;
+            --accent: #007aff;
+            --danger: #d63031;
+            --success: #27ae60;
+            --warning: #f39c12;
+            --text-main: #2d3436;
+            --text-sub: #636e72;
+            --radius: 10px;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+            background-color: var(--bg); margin: 0; padding: 0;
+            -webkit-tap-highlight-color: transparent; user-select: none;
+            color: var(--text-main); overscroll-behavior-y: none;
+        }
+
+        /* --- 1. 顶部导航 --- */
+        .nav-bar {
+            position: fixed; top: 0; left: 0; width: 100%; height: 48px;
+            background: rgba(255, 255, 255, 0.98); border-bottom: 1px solid rgba(0,0,0,0.08);
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0 16px; z-index: 100; box-sizing: border-box;
+        }
+        .nav-time { font-family: monospace; font-size: 13px; font-weight: 600; color: var(--text-main); width: 60px; }
+        .nav-title { font-size: 16px; font-weight: 800; color: var(--primary); flex: 1; text-align: center; letter-spacing: 1px; }
+        .nav-btn { width: 60px; text-align: right; font-size: 14px; color: var(--accent); font-weight: 600; cursor: pointer; }
+
+        /* 搜索面板 */
+        .search-panel {
+            position: fixed; top: 48px; left: 0; width: 100%; height: 50px;
+            background: #fff; z-index: 99; display: flex; align-items: center; padding: 0 16px;
+            box-sizing: border-box; border-bottom: 1px solid rgba(0,0,0,0.05);
+            transform: translateY(-100%); transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+        .search-panel.show { transform: translateY(0); }
+        .s-input {
+            flex: 1; height: 34px; background: #f0f2f5; border: 1px solid #e1e4e8;
+            border-radius: 6px; padding: 0 12px; font-size: 14px; outline: none;
+        }
+        .s-cancel { margin-left: 12px; font-size: 14px; color: var(--text-sub); cursor: pointer; }
+
+        /* 高亮样式 */
+        mark { background-color: #fff176; color: #c62828; padding: 0 2px; border-radius: 2px; font-weight: bold; }
+
+        .container { padding: 60px 12px 120px; overflow-x: hidden; }
+
+        /* --- 2. 输入区 --- */
+        .input-card {
+            background: var(--card); border-radius: var(--radius); padding: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.03); margin-bottom: 20px;
+            border: 1px solid #fff;
+        }
+        .tool-bar { display: flex; gap: 10px; margin-bottom: 12px; }
+        .btn-tool {
+            flex: 1; height: 36px; border: 1px solid #e1e4e8; border-radius: 6px;
+            background: #fff; font-size: 12px; font-weight: 600; color: #555;
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
+        }
+        .btn-tool:active { background: #f5f5f7; transform: scale(0.98); }
+        .btn-tool.primary { color: var(--accent); border-color: rgba(0,122,255,0.3); background: #f0f8ff; }
+
+        .form-row { display: flex; gap: 10px; margin-bottom: 10px; }
+        .span-2 { flex: 2; }
+        
+        input, select {
+            flex: 1; height: 42px; border: 1px solid #e1e4e8; border-radius: 6px;
+            background: #fdfdfd; padding: 0 10px; font-size: 14px; width: 100%;
+            box-sizing: border-box; outline: none; -webkit-appearance: none; transition: border 0.2s;
+        }
+        input:focus { border-color: var(--accent); background: #fff; }
+        input::placeholder { color: #ccc; font-size: 12px; }
+        .req-border { border-left: 3px solid var(--danger) !important; }
+
+        #addBtn {
+            width: 100%; height: 44px; margin-top: 5px;
+            background: var(--primary); color: white; border: none; border-radius: 6px;
+            font-size: 15px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 10px rgba(44,62,80,0.2);
+        }
+        #addBtn:active { transform: scale(0.97); opacity: 0.9; }
+
+        /* --- 3. 列表标题 --- */
+        .sec-head {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 5px; margin-bottom: 10px; font-size: 12px; font-weight: 800;
+            color: var(--text-sub); text-transform: uppercase; cursor: pointer;
+        }
+        .badge { background: #e5e5ea; padding: 2px 8px; border-radius: 8px; font-size: 10px; color: #666; }
+        .arrow { font-size: 10px; transition: transform 0.2s; display: inline-block; }
+        .arrow.closed { transform: rotate(-90deg); }
+
+        /* --- 待签收卡片 (白底+活跃) --- */
+        .p-card {
+            background: #fff; border-radius: 8px; padding: 14px;
+            margin-bottom: 10px; position: relative;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04); border: 1px solid #f0f0f0;
+            transition: background 0.3s;
+        }
+        .p-card.arrived { border-left: 4px solid var(--success); background: #f6fff9; }
+        .p-card.transit { border-left: 4px solid var(--warning); }
+
+        .p-del {
+            position: absolute; top: 12px; right: 12px;
+            font-size: 12px; color: #ccc; text-decoration: underline; cursor: pointer;
+        }
+        
+        .p-main { font-size: 16px; font-weight: 700; color: #000; margin-bottom: 6px; padding-right: 40px; }
+        .p-sub { font-size: 12px; color: #666; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+        
+        .tag { padding: 1px 5px; border-radius: 4px; font-size: 10px; font-weight: 600; border: 1px solid transparent; }
+        .t-code { background: #fff8e1; color: #d35400; border-color: #ffe0b2; }
+        .t-track { background: #e3f2fd; color: #1976d2; border-color: #bbdefb; cursor: pointer; }
+        .t-note { background: #f5f5f5; color: #666; }
+
+        .p-time { font-size: 11px; color: #b2bec3; margin-top: 8px; font-family: monospace; text-align: right; }
+
+        .p-acts { display: flex; gap: 10px; margin-top: 12px; padding-top: 10px; border-top: 1px dashed rgba(0,0,0,0.05); }
+        .act-btn {
+            flex: 1; height: 32px; border-radius: 4px; border: none;
+            font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.1s;
+        }
+        .act-btn:active { transform: scale(0.98); }
+        .b-tog { background: #fff; border: 1px solid #e1e4e8; color: #333; }
+        .b-ok { background: var(--success); color: white; box-shadow: 0 2px 5px rgba(39,174,96,0.2); }
+        .b-dis { background: #f5f5f7; color: #ccc; pointer-events: none; }
+
+        /* --- 签收记录 (灰底+扁平) --- */
+        .s-card {
+            background: #f8f9fa; border-radius: 8px; padding: 12px;
+            margin-bottom: 8px; border: 1px solid #e5e5ea;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .s-left { flex: 1; }
+        .s-right { text-align: right; display: flex; flex-direction: column; gap: 5px; align-items: flex-end; }
+        
+        .s-name { font-size: 14px; font-weight: 600; color: #555; }
+        .s-info { font-size: 12px; color: #999; margin-top: 3px; }
+        .s-time { font-size: 10px; color: #ccc; font-family: monospace; }
+
+        .s-btns { display: flex; gap: 8px; margin-top: 5px; }
+        .mini-btn {
+            padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;
+            background: #fff; border: 1px solid #ddd; cursor: pointer;
+        }
+        .btn-rev { color: var(--accent); }
+        .btn-del { color: var(--danger); }
+
+        /* 日期分组 */
+        .date-head {
+            font-size: 12px; color: #888; font-weight: 700; margin: 15px 0 8px 5px;
+            display: flex; align-items: center; gap: 4px; cursor: pointer;
+        }
+        .date-head::before { content: '▼'; font-size: 8px; opacity: 0.5; }
+        .date-head.closed::before { content: '▶'; }
+        .group-box.hidden { display: none; }
+
+        /* 垃圾箱 */
+        .trash-area { margin-top: 40px; border-top: 1px dashed #e0e0e0; padding-top: 15px; }
+        .trash-head { text-align: center; font-size: 11px; color: #aaa; cursor: pointer; margin-bottom: 10px; }
+        .trash-list { background: #fff; border-radius: 8px; padding: 10px; }
+        .trash-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed #f0f0f0; font-size: 12px; color: #bbb; }
+        .trash-row:last-child { border: none; }
+        .hidden { display: none; }
+
+        /* 弹窗 */
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 200; display: none; justify-content: center; align-items: center; }
+        .modal.show { display: flex; }
+        .m-box { background: #fff; width: 85%; border-radius: 12px; padding: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.15); }
+        .m-ta { width: 100%; height: 80px; border: 1px solid #e1e4e8; border-radius: 6px; padding: 10px; margin: 15px 0; outline: none; font-size: 14px; box-sizing: border-box; resize: none; background: #fafafa; }
+        .app-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        .app-btn { background: #f2f2f7; padding: 10px 0; border-radius: 6px; text-align: center; font-size: 12px; font-weight: 600; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<div class="nav-bar">
+    <div class="nav-time" id="clock">--:--</div>
+    <div class="nav-title">快递管家</div>
+    <div class="nav-btn" onclick="toggleSearch()">搜索</div>
+</div>
+
+<div class="search-panel" id="searchPanel">
+    <input class="s-input" id="sInput" placeholder="输入名称、单号、日期..." oninput="render()">
+    <div class="s-cancel" onclick="toggleSearch()">取消</div>
+</div>
+
+<div class="container">
+
+    <div class="input-card">
+        <div class="tool-bar">
+            <button class="btn-tool" onclick="jumpAlbum()">打开相册</button>
+            <button class="btn-tool primary" onclick="openSmart()">粘贴识别</button>
+        </div>
+        <input type="file" id="dummyFile" style="display:none">
+
+        <div class="form-row">
+            <select id="carrier" class="req-border"><option value="">快递公司 (必选)</option><option>京东</option><option>顺丰</option><option>中通</option><option>圆通</option><option>申通</option><option>韵达</option><option>极兔</option><option>邮政</option><option>菜鸟</option><option>丹鸟</option><option>德邦</option><option>其他</option></select>
+            <select id="source" class="req-border"><option value="">来源平台 (必选)</option><option>抖音</option><option>淘宝</option><option>京东</option><option>拼多多</option><option>小红书</option><option>闲鱼</option><option>微信</option><option>其他</option></select>
+        </div>
+        <div class="form-row">
+            <input id="pkgCode" placeholder="取件码">
+            <input id="pkgTrack" placeholder="运单号">
+        </div>
+        <div class="form-row">
+            <input id="pkgName" class="span-2" placeholder="物品名称 (选填)">
+            <input id="pkgNote" class="span-2" placeholder="备注">
+        </div>
+        <button id="addBtn" onclick="addPkg()">确认入库</button>
+    </div>
+
+    <div class="sec-head" onclick="toggleID('listPending', 'arr1')">
+        <div><span class="arrow" id="arr1">▼</span> 待签收</div>
+        <span class="badge" id="c1">0</span>
+    </div>
+    <div id="listPending"></div>
+
+    <div class="sec-head" onclick="toggleID('listSigned', 'arr2')" style="margin-top:25px">
+        <div><span class="arrow" id="arr2">▼</span> 签收记录</div>
+        <span class="badge" id="c2">0</span>
+    </div>
+    <div id="listSigned"></div>
+
+    <div class="trash-area">
+        <div class="trash-head" onclick="toggleID('listTrash', 'arr3')">
+            <span class="arrow closed" id="arr3">▼</span> 回收站 (保留10条)
+        </div>
+        <div id="listTrash" class="hidden trash-list">
+            <div style="text-align:center;color:var(--danger);font-size:12px;font-weight:600;margin-bottom:8px;cursor:pointer" onclick="emptyTrash()">[清空垃圾箱]</div>
+        </div>
+    </div>
+
+</div>
+
+<div class="modal" id="smartModal">
+    <div class="m-box">
+        <div style="text-align:center;font-weight:700;font-size:15px">粘贴识别</div>
+        <textarea id="smartText" class="m-ta" placeholder="在此粘贴短信内容..."></textarea>
+        <div style="display:flex;gap:10px">
+            <button onclick="closeModal()" style="flex:1;height:36px;border:none;background:#f5f5f5;border-radius:4px;font-weight:600">取消</button>
+            <button onclick="doSmart()" style="flex:1;height:36px;border:none;background:var(--primary);color:white;border-radius:4px;font-weight:600">填充</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="jumpModal" onclick="this.classList.remove('show')">
+    <div class="m-box" onclick="event.stopPropagation()">
+        <div style="text-align:center;font-weight:700;margin-bottom:15px">单号已复制，跳转APP</div>
+        <div class="app-grid">
+            <div class="app-btn" onclick="go('cainiao')">菜鸟</div><div class="app-btn" onclick="go('taobao')">淘宝</div>
+            <div class="app-btn" onclick="go('douyin')">抖音</div><div class="app-btn" onclick="go('xhs')">小红书</div>
+            <div class="app-btn" onclick="go('wx')">微信</div><div class="app-btn" onclick="go('web')">浏览器</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const KEY = 'kuaidi_v50_final';
+    let list = []; let curTrack = "";
+
+    // 音效系统
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    let ac;
+    function play(t) {
+        if(!ac) ac = new AudioContext(); if(ac.state==='suspended') ac.resume();
+        const o=ac.createOscillator(), g=ac.createGain(); o.connect(g); g.connect(ac.destination);
+        const n=ac.currentTime;
+        if(t==='ok'){o.frequency.setValueAtTime(500,n);o.frequency.linearRampToValueAtTime(800,n+0.1);g.gain.linearRampToValueAtTime(0,n+0.2);o.start(n);o.stop(n+0.2);}
+        if(t==='del'){o.type='triangle';o.frequency.setValueAtTime(100,n);g.gain.linearRampToValueAtTime(0,n+0.15);o.start(n);o.stop(n+0.15);}
+        if(t==='click'){o.frequency.setValueAtTime(800,n);g.gain.linearRampToValueAtTime(0,n+0.05);o.start(n);o.stop(n+0.05);}
+    }
+
+    // Siri 接口
+    window.onload = function() {
+        const p = new URLSearchParams(window.location.search);
+        const t = p.get('q') || p.get('text');
+        if(t) setTimeout(() => parseAndAdd(decodeURIComponent(t), true), 500);
+        setInterval(()=>{
+            const d=new Date(); document.getElementById('clock').innerText=`${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+        }, 1000);
+    };
+
+    // 数据加载 (兼容v48)
+    try { 
+        if(!localStorage.getItem(KEY)) {
+            const old = localStorage.getItem('kuaidi_v48_biz');
+            if(old) localStorage.setItem(KEY, old);
+        }
+        list = JSON.parse(localStorage.getItem(KEY)) || [];
+    } catch(e){ list=[]; }
+    function save() { localStorage.setItem(KEY, JSON.stringify(list)); render(); }
+
+    function hl(str, k) { if(!str)return''; if(!k)return str; return str.replace(new RegExp(`(${k})`,'gi'), '<mark>$1</mark>'); }
+    function ft(ts) { if(!ts)return''; const d=new Date(ts); const p=n=>n.toString().padStart(2,'0'); return `${d.getFullYear()}/${p(d.getMonth()+1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`; }
+    function gk(ts) { const d=new Date(ts); return `${d.getMonth()+1}月${d.getDate()}日`; }
+
+    function render() {
+        const kw = document.getElementById('sInput').value.toLowerCase().trim();
+        const pL=document.getElementById('listPending'), sL=document.getElementById('listSigned'), tL=document.getElementById('listTrash');
+        pL.innerHTML=''; sL.innerHTML=''; tL.innerHTML='';
+        let c1=0, c2=0, c3=0;
+
+        // 1. 待签收 (置顶逻辑)
+        let pending = list.filter(i=>i.st==='p' && (i.n+i.c+i.code+ft(i.t1)).toLowerCase().includes(kw));
+        pending.sort((a,b) => {
+            if (a.sub==='arr' && b.sub!=='arr') return -1;
+            if (a.sub!=='arr' && b.sub==='arr') return 1;
+            return b.t1 - a.t1;
+        });
+        c1 = pending.length;
+        pending.forEach(i=>{
+            const arr = i.sub==='arr';
+            const div = document.createElement('div');
+            div.className = arr ? 'p-card arrived' : 'p-card transit';
+            
+            const tags = [];
+            if(i.code) tags.push(`<span class="tag t-code">${hl(i.code, kw)}</span>`);
+            if(i.track) tags.push(`<span class="tag t-track" onclick="showJump('${i.track}')">单号</span>`);
+            if(i.note) tags.push(`<span class="tag t-note">${hl(i.note, kw)}</span>`);
+
+            div.innerHTML = `
+                <div class="p-del" onclick="toTrash('${i.id}')">删除</div>
+                <div class="p-main">${hl(i.n||'未知物品', kw)}</div>
+                <div class="p-sub">
+                    <span>${hl(i.c, kw)}·${hl(i.s, kw)}</span> ${tags.join('')}
+                </div>
+                <div class="p-time" style="color:${arr?'var(--success)':'#ccc'}">${arr?'已到站':'运输中'} · ${hl(ft(arr?i.t_arr:i.t1), kw)}</div>
+                
+                <div class="p-acts">
+                    <button class="act-btn b-tog" onclick="tog('${i.id}')">${arr?'撤回状态':'确认到站'}</button>
+                    <button class="act-btn ${arr?'b-ok':'b-dis'}" onclick="sign('${i.id}')">确认签收</button>
+                </div>
+            `;
+            pL.appendChild(div);
+        });
+
+        // 2. 签收记录 (分组+折叠)
+        let signed = list.filter(i=>i.st==='s' && (i.n+i.c+ft(i.t2)).toLowerCase().includes(kw)).sort((a,b)=>b.t2-a.t2);
+        c2 = signed.length;
+        if(c2 > 0) {
+            const groups={}; const keys=[];
+            signed.forEach(i=>{ const k=gk(i.t2); if(!groups[k]){groups[k]=[]; keys.push(k);} groups[k].push(i); });
+            keys.forEach(k => {
+                sL.innerHTML += `<div class="date-head" onclick="this.nextElementSibling.classList.toggle('hidden');this.classList.toggle('closed')">▼ ${k} (${groups[k].length})</div>`;
+                const box = document.createElement('div');
+                box.className = 'group-box';
+                groups[k].forEach(i => {
+                    const cStr = i.code ? ` <span class="tag t-code">${hl(i.code,kw)}</span>` : '';
+                    box.innerHTML += `
+                        <div class="s-card">
+                            <div class="s-left">
+                                <div class="s-name">${hl(i.n||'未知', kw)}</div>
+                                <div class="s-meta">${hl(i.c, kw)} ${cStr}</div>
+                            </div>
+                            <div class="s-right">
+                                <div class="s-time">${hl(ft(i.t2), kw)}</div>
+                                <div class="s-ops">
+                                    <button class="btn-s btn-rev" onclick="revert('${i.id}')">撤回</button>
+                                    <button class="btn-s btn-del" onclick="toTrash('${i.id}')">删除</button>
+                                </div>
+                            </div>
+                        </div>`;
+                });
+                sL.appendChild(box);
+            });
+        }
+
+        // 3. 垃圾箱 (限10条)
+        let trash = list.filter(i=>i.st==='d').sort((a,b)=>b.t1-a.t1);
+        c3 = trash.length;
+        trash.slice(0, 10).forEach(i=>{
+            tL.innerHTML += `<div class="trash-row"><span>${i.n||i.c}</span><span style="color:var(--accent);cursor:pointer" onclick="restore('${i.id}')">恢复</span></div>`;
+        });
+
+        document.getElementById('c1').innerText = `(${c1})`;
+        document.getElementById('c2').innerText = `(${c2})`;
+        document.getElementById('c3').innerText = `(${c3})`;
+    }
+
+    // 逻辑
+    function addPkg(){
+        const c=document.getElementById('carrier').value; const s=document.getElementById('source').value;
+        if(!c || !s){ alert('快递和来源必填'); return; }
+        list.push({
+            id:Date.now()+'', c:c, s:s, code:v('pkgCode'), n:v('pkgName'),
+            track:v('pkgTrack'), note:v('pkgNote'), st:'p', sub:'tr', t1:Date.now()
+        });
+        save(); play('ok');
+        // 自动清空
+        ['pkgName','pkgCode','pkgTrack','pkgNote'].forEach(id=>document.getElementById(id).value='');
+        document.getElementById('carrier').selectedIndex=0; document.getElementById('source').selectedIndex=0;
+    }
+    function v(id){return document.getElementById(id).value.trim();}
+
+    function tog(id){let i=list.find(x=>x.id===id); if(i){i.sub=i.sub==='tr'?'arr':'tr'; if(i.sub==='arr') i.t_arr=Date.now(); save(); play('click');}}
+    function sign(id){let i=list.find(x=>x.id===id); if(i&&i.sub==='arr'){i.st='s'; i.t2=Date.now(); save(); play('ok');}}
+    function toTrash(id){ 
+        let i=list.find(x=>x.id===id); if(i){ i.st='d'; 
+        let trash=list.filter(x=>x.st==='d').sort((a,b)=>b.t1-a.t1); if(trash.length>10){ let ks=trash.slice(0,10).map(x=>x.id); list=list.filter(x=>x.st!=='d'||ks.includes(x.id)); }
+        save(); play('del'); }
+    }
+    function revert(id){let i=list.find(x=>x.id===id); if(i){i.st='p'; i.sub='arr'; save(); play('click');}}
+    function restore(id){let i=list.find(x=>x.id===id); if(i){i.st='p'; save(); play('click');}}
+    function emptyTrash(){if(confirm('清空?')){list=list.filter(x=>x.st!=='d'); save(); play('del');}}
+
+    function jumpAlbum() { const u = navigator.userAgent; if (u.match(/iPhone|iPad/i)) window.location.href = "photos-redirect://"; else document.getElementById('dummyFile').click(); }
+    function openSmart() { document.getElementById('smartModal').classList.add('show'); document.getElementById('smartText').focus(); play('click'); }
+    function closeModal() { document.getElementById('smartModal').classList.remove('show'); document.getElementById('jumpModal').classList.remove('show'); }
+    function toggleSearch(){ document.getElementById('searchPanel').classList.toggle('show'); document.getElementById('sInput').focus(); play('click'); }
+    function toggleID(id, arr){ document.getElementById(id).classList.toggle('hidden'); if(arr)document.getElementById(arr).classList.toggle('closed'); play('click'); }
+
+    function doSmart(){ parseAndAdd(document.getElementById('smartText').value); }
+    function parseAndAdd(t, isSiri=false) {
+        if(!t) return;
+        t=t.replace(/\s+/g,' ').replace(/[\(\)（）]/g,' ');
+        let sent_src = t.match(/(?:我在|在|从)\s*([^买下单]+)/);
+        let sent_item = t.match(/买了\s*([^，,。发]+)/);
+        let sent_carrier = t.match(/发的\s*([^快递]+)\s*快递/);
+        let sent_code = t.match(/取件码是\s*[:：]?\s*([A-Za-z0-9-]+)/);
+
+        if(sent_src) document.getElementById('source').value = sent_src[1];
+        else { const srcs=['抖音','淘宝','京东','拼多多','小红书','咸鱼','微信','唯品会']; for(let s of srcs) if(t.toUpperCase().includes(s)) document.getElementById('source').value=s; }
+
+        if(sent_carrier) document.getElementById('carrier').value = sent_carrier[1];
+        else { const map={'京东':'京东','顺丰':'顺丰','中通':'中通','圆通':'圆通','申通':'申通','韵达':'韵达','极兔':'极兔','邮政':'邮政','菜鸟':'菜鸟','丹鸟':'丹鸟','德邦':'德邦'}; for(let k in map) if(t.includes(k)) document.getElementById('carrier').value=map[k]; }
+
+        if(sent_code) document.getElementById('pkgCode').value = sent_code[1];
+        else { let cm=t.match(/([A-Za-z0-9]+-[0-9]+(-[0-9]+)?)/); if(!cm)cm=t.match(/(?:取件码|码)\s*[:：]?\s*([A-Za-z0-9]{3,8})/); if(cm)document.getElementById('pkgCode').value=cm[1]||cm[0]; }
+
+        if(sent_item) document.getElementById('pkgName').value = sent_item[1];
+        else { let nm=""; const bads=['菜鸟','驿站','快递','取件','通知','派送']; let bm; const br=/【([^】]+)】/g; while((bm=br.exec(t))!==null){let w=bm[1],isBad=false;for(let b of bads)if(w.includes(b))isBad=true;if(!isBad){nm=w;break;}} if(!nm){let m=t.match(/(?:购买|商品|包含|内有|物品|内容)[:：]?\s*([^，,。.\s]+)/); if(m)nm=m[1];} if(nm)document.getElementById('pkgName').value=nm.substr(0,15); }
+
+        let tr=t.match(/(SF[0-9A-Za-z]+|JD[0-9A-Za-z]+|\d{12,})/); if(tr&&!/^1\d{10}$/.test(tr[0]))document.getElementById('pkgTrack').value=tr[0];
+        
+        closeModal(); document.getElementById('smartText').value='';
+        if(isSiri && document.getElementById('carrier').value && document.getElementById('source').value) addPkg();
+    }
+
+    function showJump(t){ curTrack=t; const i=document.createElement('input');i.value=t;document.body.appendChild(i);i.select();document.execCommand('copy');document.body.removeChild(i); document.getElementById('jumpModal').classList.add('show'); play('click'); }
+    function go(a){ 
+        let u=""; if(a==='cainiao')u="cainiao://";else if(a==='taobao')u="taobao://";else if(a==='douyin')u="snssdk1128://";else if(a==='xhs')u="xhsdiscover://";else if(a==='wx')u="weixin://";else u="https://m.baidu.com/s?word="+curTrack;
+        window.location.href=u; closeModal();
+    }
+
+    render();
+</script>
+</body>
+</html>
